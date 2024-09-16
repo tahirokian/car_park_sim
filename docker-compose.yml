@@ -1,0 +1,98 @@
+version: "3"
+
+networks:
+    public:
+    private:
+        internal: true
+
+services:
+    rabbitmq:
+        image: "rabbitmq:3-management"
+        container_name: "rabbitmq"
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+        networks:
+            - private
+            - public
+
+    redis:
+        image: "redis"
+        container_name: "redis"
+        ports:
+            - "6379:6379"
+        networks:
+            - private
+
+    web-backend:
+        build:
+            context: ./python_server
+        container_name: "web-backend"
+        environment:
+            - WEB_BACKEND_PORT=40000
+        ports:
+            - "40000:40000"
+        networks:
+            - private
+            - public
+
+    queue-configurator:
+        build:
+            context: ./rabbitmq_config_service
+        container_name: "queue-configurator"
+        environment:
+            - RABIITMQ_PORT=5672
+            - RABIITMQ_ADDR=rabbitmq
+        depends_on:
+            - rabbitmq
+        networks:
+            - private
+
+    vehicle-entry:
+        build:
+            context: ./vehicle_entry_service
+        container_name: "vehicle-entry"
+        environment:
+            - RABIITMQ_PORT=5672
+            - RABIITMQ_ADDR=rabbitmq
+        depends_on:
+            - rabbitmq
+            - queue-configurator
+        networks:
+            - private
+
+    vehicle-exit:
+        build:
+            context: ./vehicle_exit_service
+        container_name: "vehicle-exit"
+        environment:
+            - RABIITMQ_PORT=5672
+            - RABIITMQ_ADDR=rabbitmq
+            - REDIS_PORT=6379
+            - REDIS_ADDR=redis
+        depends_on:
+            - redis
+            - rabbitmq
+            - queue-configurator
+            - vehicle-entry
+        networks:
+            - private
+
+    go-backend:
+        build:
+            context: ./go_backend_service
+        container_name: "go-backend"
+        environment:
+            - RABIITMQ_PORT=5672
+            - RABIITMQ_ADDR=rabbitmq
+            - REDIS_PORT=6379
+            - REDIS_ADDR=redis
+            - WEBBACKEND_PORT=40000
+            - WEBBACKEND_ADDR=web-backend
+        depends_on:
+            - redis
+            - rabbitmq
+            - queue-configurator
+            - web-backend
+        networks:
+            - private
