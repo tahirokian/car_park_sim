@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
 )
@@ -26,6 +29,7 @@ func getRedisUrl() string {
 }
 
 func main() {
+	var wg sync.WaitGroup
 	start := time.Now()
 
 	var conn *amqp.Connection
@@ -61,28 +65,61 @@ func main() {
 
 	defer rdb.Close()
 
-	log.Println("Go backend service setup took: ", time.Since(start))
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector())
+	m := NewMetrics(reg)
+	go setupPromethusEndpoint(reg)
+
+	setupDuration := time.Since(start)
+	m.startupDelay.Set(setupDuration.Seconds())
+
+	log.Println("Go backend service setup took: ", setupDuration)
+
+	wg.Add(1)
 
 	// Consume vehicle entry events
 	go func() {
+		defer wg.Done()
 		msgs, _ := ch.Consume("vehicle_entry", "", true, false, false, false, nil)
+
 		for msg := range msgs {
+			entryEventStart := time.Now()
+
 			var event VehicleEntryEvent
 			json.Unmarshal(msg.Body, &event)
 			recordEntryEvent(rdb, event)
+
+			entryEventProcessingDuration := time.Since(entryEventStart)
+			m.eventProcessingDelay.WithLabelValues("entry_event").
+				Set(entryEventProcessingDuration.Seconds())
+			m.eventProcessingDelayHist.WithLabelValues("entry_event").
+				Observe(entryEventProcessingDuration.Seconds())
+			m.numberOfProcessedEvents.WithLabelValues("entry_event").Inc()
 		}
 	}()
+
+	wg.Add(1)
 
 	// Consume vehicle exit events
 	go func() {
+		defer wg.Done()
+
 		msgs, _ := ch.Consume("vehicle_exit", "", true, false, false, false, nil)
+
 		for msg := range msgs {
+			exitEventStart := time.Now()
 			var event VehicleExitEvent
 			json.Unmarshal(msg.Body, &event)
 			recordExitEventAndSummary(rdb, event)
+
+			exitEventProcessingDuration := time.Since(exitEventStart)
+			m.eventProcessingDelay.WithLabelValues("exit_event").
+				Set(exitEventProcessingDuration.Seconds())
+			m.eventProcessingDelayHist.WithLabelValues("exit_event").
+				Observe(exitEventProcessingDuration.Seconds())
+			m.numberOfProcessedEvents.WithLabelValues("exit_event").Inc()
 		}
 	}()
 
-	// Keep service running
-	select {}
+	wg.Wait()
 }

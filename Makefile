@@ -1,11 +1,11 @@
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
-.PHONY: help build build-and-deploy deploy up start down stop restart logs ps top login-redis login-web-backend login-rabbitmq login-queue-configurator login-vehicle-entry login-vehicle-exit login-go-backend
+.PHONY: help build build-and-deploy deploy up start down stop restart logs ps top login-redis login-prometheus login-web-backend login-rabbitmq login-queue-configurator login-vehicle-entry login-vehicle-exit login-go-backend
 
 help:	## Show this help message
 	@echo "Make sure you can run docker command without sudo"
 	@echo ""
-	@echo "Usage: make {build|build-and-deploy|deploy|up|start|stop|down|restart|logs|ps|top|login-redis|login-rabbitmq|login-web-backend|login-queue-configurator|login-vehicle-entry|login-vehicle-exit|login-go-backend}"
+	@echo "Usage: make {build|build-and-deploy|deploy|up|start|stop|down|restart|logs|ps|top|login-redis|login-rabbitmq|login-web-backend|login-queue-configurator|login-vehicle-entry|login-vehicle-exit|login-go-backend|login-prometheus}"
 
 build:
 	docker-compose -f docker-compose.yml build
@@ -45,19 +45,22 @@ login-redis:
 	docker-compose -f docker-compose.yml exec redis sh
 
 login-web-backend:
-	docker-compose -f docker-compose.yml exec web-backend sh
+	docker-compose -f docker-compose.yml exec web_backend sh
 
 login-rabbitmq:
 	docker-compose -f docker-compose.yml exec rabbitmq sh
 
 login-queue-configurator:
-	docker-compose -f docker-compose.yml exec queue-configurator sh
+	docker-compose -f docker-compose.yml exec queue_configurator sh
 
 login-vehicle-entry:
-	docker-compose -f docker-compose.yml exec vehicle-entry sh
+	docker-compose -f docker-compose.yml exec vehicle_entry sh
 
 login-vehicle-exit:
-	docker-compose -f docker-compose.yml exec vehicle-exit sh
+	docker-compose -f docker-compose.yml exec vehicle_exit sh
 
 login-go-backend:
-	docker-compose -f docker-compose.yml exec go-backend sh
+	docker-compose -f docker-compose.yml exec go_backend sh
+
+login-prometheus:
+	docker-compose -f docker-compose.yml exec prometheus sh

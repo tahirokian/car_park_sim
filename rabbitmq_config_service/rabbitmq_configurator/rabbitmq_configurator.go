@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -14,6 +18,50 @@ func getRabbitmqUrl() string {
 	rabbitmqPort := os.Getenv("RABIITMQ_PORT")
 	rabbitmqUrl := fmt.Sprintf("amqp://guest:guest@%s:%s/", rabbitmqAddress, rabbitmqPort)
 	return rabbitmqUrl
+}
+
+type metrics struct {
+	startupDelay prometheus.Gauge
+}
+
+func NewMetrics(reg prometheus.Registerer) *metrics {
+	m := &metrics{
+		startupDelay: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "queue_configurator",
+				Name:      "startup_delay",
+				Help:      "Startup delay for queue configurator service.",
+			},
+		),
+	}
+
+	reg.MustRegister(m.startupDelay)
+	return m
+}
+
+func setupPromethusEndpoint(reg *prometheus.Registry) {
+	queueConfigAddress := os.Getenv("QUEUE_CONFIG_ADDR")
+	queueConfigPort := os.Getenv("QUEUE_CONFIG_PORT")
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})
+	http.Handle("/metrics", promHandler)
+	log.Printf("Prometheus metrics available at http://%s:%s/metrics\n",
+		queueConfigAddress, queueConfigPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", queueConfigPort), nil))
+}
+
+func setupQueues(ch *amqp.Channel) {
+	// Declare the queues for vehicle entry and exit events
+	_, err := ch.QueueDeclare("vehicle_entry", true, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("Failed to declare vehicle_entry queue: %v", err)
+	}
+
+	_, err = ch.QueueDeclare("vehicle_exit", true, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("Failed to declare vehicle_exit queue: %v", err)
+	}
+
+	log.Println("Successfully declared vehicle_entry and vehicle_exit queues...")
 }
 
 func main() {
@@ -43,17 +91,16 @@ func main() {
 	}
 	defer ch.Close()
 
-	// Declare the queues for vehicle entry and exit events
-	_, err = ch.QueueDeclare("vehicle_entry", true, false, false, false, nil)
-	if err != nil {
-		log.Fatalf("Failed to declare vehicle_entry queue: %v", err)
-	}
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector())
+	m := NewMetrics(reg)
+	go setupPromethusEndpoint(reg)
 
-	_, err = ch.QueueDeclare("vehicle_exit", true, false, false, false, nil)
-	if err != nil {
-		log.Fatalf("Failed to declare vehicle_exit queue: %v", err)
-	}
+	setupQueues(ch)
 
-	log.Println("Successfully declared vehicle_entry and vehicle_exit queues...")
-	log.Println("Total execution time: ", time.Since(start))
+	setupDuration := time.Since(start)
+	m.startupDelay.Set(setupDuration.Seconds())
+	log.Println("Time to setup rabbitmq queues: ", setupDuration)
+
+	select {}
 }

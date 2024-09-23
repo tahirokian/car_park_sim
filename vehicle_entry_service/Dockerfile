@@ -1,5 +1,7 @@
 FROM golang:1.23.1-alpine
 
+RUN apk add --update curl vim
+
 # Set working directory
 RUN mkdir /vehicle_entry
 WORKDIR /vehicle_entry

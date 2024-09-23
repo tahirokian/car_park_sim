@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -30,8 +34,88 @@ func getRabbitmqUrl() string {
 	return rabbitmqUrl
 }
 
+type metrics struct {
+	numberOfProcessedEvents prometheus.Counter
+	startupDelay            prometheus.Gauge
+	eventProcessingDelay    prometheus.Gauge
+}
+
+func NewMetrics(reg prometheus.Registerer) *metrics {
+	m := &metrics{
+		numberOfProcessedEvents: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: "vehicle_entry",
+				Name:      "total_processed_entry_events",
+				Help:      "Total number of processed vehicle entry events.",
+			},
+		),
+		startupDelay: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "vehicle_entry",
+				Name:      "startup_delay",
+				Help:      "Startup delay for vehicle entry service.",
+			},
+		),
+		eventProcessingDelay: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "vehicle_entry",
+				Name:      "entry_event_processing_delay",
+				Help:      "Entry event processing delay for vehicle entry service.",
+			},
+		),
+	}
+
+	reg.MustRegister(m.numberOfProcessedEvents)
+	reg.MustRegister(m.startupDelay)
+	reg.MustRegister(m.eventProcessingDelay)
+	return m
+}
+
+func setupPromethusEndpoint(reg *prometheus.Registry) {
+	vehicleEntryAddress := os.Getenv("VEHICLE_ENTRY_ADDR")
+	vehicleEntryPort := os.Getenv("VEHICLE_ENTRY_PORT")
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})
+	http.Handle("/metrics", promHandler)
+	log.Printf("Prometheus metrics available at http://%s:%s/metrics\n",
+		vehicleEntryAddress, vehicleEntryPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", vehicleEntryPort), nil))
+}
+
+func processEnrtyEvents(ch *amqp.Channel, ctx context.Context, m *metrics) {
+	for {
+		eventProcessingStart := time.Now()
+
+		entryEvent := VehicleEntryEvent{
+			ID:            fmt.Sprintf("event-%d", rand.Intn(10000)),
+			VehiclePlate:  randomVehiclePlate(),
+			EntryDateTime: time.Now().UTC().Format(time.RFC3339),
+		}
+
+		for {
+			err := publishEntryEvent(ch, ctx, entryEvent)
+
+			if err != nil {
+				log.Println("Failed to publish enter event, retrying in 5 seconds...")
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			log.Printf("Published entry event: %+v\n", entryEvent)
+			break
+		}
+		eventProcessingDurationSec := time.Since(eventProcessingStart).Seconds()
+		log.Printf("Entry event processing took: %v\n", eventProcessingDurationSec)
+
+		m.numberOfProcessedEvents.Inc()
+		m.eventProcessingDelay.Set(float64(eventProcessingDurationSec))
+
+		// Add a delay before next event.
+		time.Sleep(2 * time.Second)
+	}
+}
+
 func main() {
-	start := time.Now()
+	startTime := time.Now()
 
 	var conn *amqp.Connection
 	var err error
@@ -60,32 +144,16 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	log.Println("Vehicle entry service setup took: ", time.Since(start))
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector())
+	m := NewMetrics(reg)
+	go setupPromethusEndpoint(reg)
 
-	for {
-		eventProcessingStart := time.Now()
+	setupDuration := time.Since(startTime)
+	m.startupDelay.Set(setupDuration.Seconds())
+	log.Println("Vehicle entry service setup took: ", setupDuration)
 
-		entryEvent := VehicleEntryEvent{
-			ID:            fmt.Sprintf("event-%d", rand.Intn(10000)),
-			VehiclePlate:  randomVehiclePlate(),
-			EntryDateTime: time.Now().UTC().Format(time.RFC3339),
-		}
+	go processEnrtyEvents(ch, ctx, m)
 
-		for {
-			err = publishEntryEvent(ch, ctx, entryEvent)
-
-			if err != nil {
-				log.Println("Failed to publish enter event, retrying in 5 seconds...")
-				time.Sleep(5 * time.Second)
-				continue
-			}
-
-			log.Printf("Published entry event: %+v\n", entryEvent)
-			break
-		}
-		log.Println("Entry event processing took: ", time.Since(eventProcessingStart))
-
-		// Add a delay before next event.
-		time.Sleep(2 * time.Second)
-	}
+	select {}
 }

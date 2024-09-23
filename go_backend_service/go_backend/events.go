@@ -28,10 +28,9 @@ type VehicleParkingSummary struct {
 	Duration      string `json:"duration"`
 }
 
-var ctx = context.Background()
-
 func recordEntryEvent(rdb *redis.Client, event VehicleEntryEvent) {
 	start := time.Now()
+	var ctx = context.Background()
 
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -48,6 +47,7 @@ func recordEntryEvent(rdb *redis.Client, event VehicleEntryEvent) {
 
 func recordExitEventAndSummary(rdb *redis.Client, event VehicleExitEvent) {
 	start := time.Now()
+	var ctx = context.Background()
 
 	entryTime, err := rdb.HGet(ctx, event.VehiclePlate, "entry_time").Result()
 

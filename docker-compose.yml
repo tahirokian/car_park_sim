@@ -6,6 +6,17 @@ networks:
         internal: true
 
 services:
+    prometheus:
+        image: "prom/prometheus:v2.54.1"
+        container_name: "prometheus"
+        volumes:
+            - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+        ports:
+            - "9090:9090"
+        networks:
+            - private
+            - public
+
     rabbitmq:
         image: "rabbitmq:3-management"
         container_name: "rabbitmq"
@@ -24,75 +35,95 @@ services:
         networks:
             - private
 
-    web-backend:
+    web_backend:
         build:
             context: ./python_server
-        container_name: "web-backend"
+        container_name: "web_backend"
         environment:
-            - WEB_BACKEND_PORT=40000
+            - WEBBACKEND_PORT=40000
+            - WEBBACKEND_ADDR=web_backend
+            - WEBBACKEND_METRICS_PORT=40100
         ports:
             - "40000:40000"
+        expose:
+            - "40100:40100"
         networks:
             - private
             - public
 
-    queue-configurator:
+    queue_configurator:
         build:
             context: ./rabbitmq_config_service
-        container_name: "queue-configurator"
+        container_name: "queue_configurator"
         environment:
             - RABIITMQ_PORT=5672
             - RABIITMQ_ADDR=rabbitmq
+            - QUEUE_CONFIG_ADDR=queue_configurator
+            - QUEUE_CONFIG_PORT=40200
         depends_on:
             - rabbitmq
+        expose:    # Only exposed to private network
+            - "40200:40200"
         networks:
             - private
 
-    vehicle-entry:
+    vehicle_entry:
         build:
             context: ./vehicle_entry_service
-        container_name: "vehicle-entry"
+        container_name: "vehicle_entry"
         environment:
             - RABIITMQ_PORT=5672
             - RABIITMQ_ADDR=rabbitmq
+            - VEHICLE_ENTRY_ADDR=vehicle_entry
+            - VEHICLE_ENTRY_PORT=41000
         depends_on:
             - rabbitmq
-            - queue-configurator
+            - queue_configurator
+        expose:    # Only exposed to private network
+            - "41000:41000" 
         networks:
             - private
 
-    vehicle-exit:
+    vehicle_exit:
         build:
             context: ./vehicle_exit_service
-        container_name: "vehicle-exit"
+        container_name: "vehicle_exit"
         environment:
             - RABIITMQ_PORT=5672
             - RABIITMQ_ADDR=rabbitmq
             - REDIS_PORT=6379
             - REDIS_ADDR=redis
+            - VEHICLE_EXIT_ADDR=vehicle_exit
+            - VEHICLE_EXIT_PORT=42000
         depends_on:
             - redis
             - rabbitmq
-            - queue-configurator
-            - vehicle-entry
+            - queue_configurator
+            - vehicle_entry
+        expose:    # Only exposed to private network
+            - "42000:42000"
         networks:
             - private
 
-    go-backend:
+    go_backend:
         build:
             context: ./go_backend_service
-        container_name: "go-backend"
+        container_name: "go_backend"
         environment:
             - RABIITMQ_PORT=5672
             - RABIITMQ_ADDR=rabbitmq
             - REDIS_PORT=6379
             - REDIS_ADDR=redis
             - WEBBACKEND_PORT=40000
-            - WEBBACKEND_ADDR=web-backend
+            - WEBBACKEND_ADDR=web_backend
+            - GO_BACKEND_ADDR=go_backend
+            - GO_BACKEND_PORT=43000
         depends_on:
             - redis
             - rabbitmq
-            - queue-configurator
-            - web-backend
+            - queue_configurator
+            - web_backend
+        expose:
+          - "43000:43000"
         networks:
             - private
