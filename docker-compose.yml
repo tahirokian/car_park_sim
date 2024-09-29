@@ -17,6 +17,24 @@ services:
             - private
             - public
 
+    grafana:
+        image: grafana/grafana:11.2.1
+        container_name: "grafana"
+        volumes:
+            - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+        ports:
+            - "3000:3000"
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - PROMETHEUS_ADDR=prometheus
+            - PROMETHEUS_PORT=9090
+        depends_on:
+            - prometheus
+        networks:
+            - private
+            - public
+
     rabbitmq:
         image: "rabbitmq:3-management"
         container_name: "rabbitmq"

@@ -59,7 +59,7 @@ func NewMetrics(reg prometheus.Registerer) *metrics {
 		numberOfProcessedEvents: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Namespace: "vehicle_exit",
-				Name:      "total_processed_exit_events",
+				Name:      "total_processed_events",
 				Help:      "Total number of processed vehicle exit events.",
 			},
 		),
@@ -73,8 +73,8 @@ func NewMetrics(reg prometheus.Registerer) *metrics {
 		eventProcessingDelay: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Namespace: "vehicle_exit",
-				Name:      "exit_event_processing_delay",
-				Help:      "Entry event processing delay for vehicle exit service.",
+				Name:      "event_processing_delay",
+				Help:      "Event processing delay for vehicle exit service.",
 			},
 		),
 	}

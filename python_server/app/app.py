@@ -13,27 +13,23 @@ from prometheus_client import start_http_server, Summary, Counter, Gauge
 
 app = Flask(__name__)
 
-GET_REQUEST_SUMMARY = Summary('get_request_processing_seconds', 'Time spent processing get request')
-_GET_REQUEST_COUNT = Counter('get_request_count', 'Total number of get requests')
-_GET_REQUEST_TIME = Gauge('get_gauge_request_seconds', 'Time spent processing get request')
-POST_REQUEST_SUMMARY = Summary('post_request_processing_seconds', 'Time spent processing post request')
-_POST_REQUEST_COUNT = Counter('post_request_count', 'Total number of post requests')
-_POST_REQUEST_TIME = Gauge('post_gauge_request_seconds', 'Time spent processing post request')
+_HTTP_REQUEST_COUNT = Counter(namespace='web_backend', name='http_requests_count', 
+                              documentation='Total number of http requests', labelnames=['method'])
+_HTTP_REQUEST_TIME = Gauge(namespace='web_backend', name='http_request_duration_seconds',
+                           documentation='Time spent processing http request', 
+                           labelnames=['method'])
 
 
-
-@GET_REQUEST_SUMMARY.time()
 @app.route("/", methods=['GET'])
 def index():
     start_time = time.time()
     rendered = render_template('default.html') if not Path("static/vehicle_parking.csv").exists() \
         else render_template('index.html')
-    _GET_REQUEST_COUNT.inc()
-    _GET_REQUEST_TIME.set(time.time() - start_time)
+    _HTTP_REQUEST_COUNT.labels(method='GET').inc()
+    _HTTP_REQUEST_TIME.labels(method='GET').set(time.time() - start_time)
     return rendered
 
 
-@POST_REQUEST_SUMMARY.time()
 @app.route('/upload', methods=['POST'])
 def upload_to_file():
     start_time = time.time()
@@ -46,8 +42,8 @@ def upload_to_file():
             csv_writer.writeheader()
         csv_writer.writerow(record)
 
-    _POST_REQUEST_COUNT.inc()
-    _POST_REQUEST_TIME.set(time.time() - start_time)
+    _HTTP_REQUEST_COUNT.labels(method='POST').inc()
+    _HTTP_REQUEST_TIME.labels(method='POST').set(time.time() - start_time)
     return jsonify({"status": "success"})
 
 

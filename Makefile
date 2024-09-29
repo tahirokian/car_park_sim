@@ -1,11 +1,11 @@
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
-.PHONY: help build build-and-deploy deploy up start down stop restart logs ps top login-redis login-prometheus login-web-backend login-rabbitmq login-queue-configurator login-vehicle-entry login-vehicle-exit login-go-backend
+.PHONY: help build build-and-deploy deploy up start down stop restart logs ps top login-redis login-prometheus login-web-backend login-rabbitmq login-queue-configurator login-vehicle-entry login-vehicle-exit login-go-backend login-grafana
 
 help:	## Show this help message
 	@echo "Make sure you can run docker command without sudo"
 	@echo ""
-	@echo "Usage: make {build|build-and-deploy|deploy|up|start|stop|down|restart|logs|ps|top|login-redis|login-rabbitmq|login-web-backend|login-queue-configurator|login-vehicle-entry|login-vehicle-exit|login-go-backend|login-prometheus}"
+	@echo "Usage: make {build|build-and-deploy|deploy|up|start|stop|down|restart|logs|ps|top|login-redis|login-rabbitmq|login-web-backend|login-queue-configurator|login-vehicle-entry|login-vehicle-exit|login-go-backend|login-prometheus|login-grafana}"
 
 build:
 	docker-compose -f docker-compose.yml build
@@ -64,3 +64,6 @@ login-go-backend:
 
 login-prometheus:
 	docker-compose -f docker-compose.yml exec prometheus sh
+
+login-grafana:
+	docker-compose -f docker-compose.yml exec grafana sh

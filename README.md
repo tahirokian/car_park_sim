@@ -45,6 +45,16 @@ HGET vehicle_palte parking_exit_data
 
 * `prometheus` server is available at `http://ip:9090`
 
+* `grafana` server is available at `http://ip:3000`
+
+- To query metrics from different services, use following namespaces to list available metrics and
+  build grafana dashboards:
+    - go_backend
+    - web_backend
+    - queue_configurator
+    - vehicle_entry
+    - vehicle_exit
+
 ## Use below command to see all possible options to interact with the services
 ```
 make help

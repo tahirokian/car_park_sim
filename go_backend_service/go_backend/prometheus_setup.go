@@ -23,7 +23,7 @@ func NewMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.CounterOpts{
 				Namespace: "go_backend",
 				Name:      "total_processed_events",
-				Help:      "Total number of processed vehicle entry events for go backend service.",
+				Help:      "Total number of processed vehicle events for go backend service.",
 			},
 			[]string{"event_type"},
 		),
