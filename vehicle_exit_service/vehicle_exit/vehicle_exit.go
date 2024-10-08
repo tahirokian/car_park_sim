@@ -177,6 +177,11 @@ func main() {
 	m := NewMetrics(reg)
 	go setupPromethusEndpoint(reg)
 
+	_, declateErr := ch.QueueDeclare("vehicle_exit", true, false, false, false, nil)
+	if declateErr != nil {
+		log.Fatalf("Failed to declare vehicle_exit queue: %v", declateErr)
+	}
+
 	setupDuration := time.Since(start)
 	m.startupDelay.Set(setupDuration.Seconds())
 

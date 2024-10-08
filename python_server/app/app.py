@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request
 from flask import render_template
-from prometheus_client import start_http_server, Summary, Counter, Gauge
+from prometheus_client import Counter, Gauge, start_http_server
 
 app = Flask(__name__)
 
@@ -36,7 +36,7 @@ def upload_to_file():
     record = json.loads(request.data)
     file_exists = Path("static/vehicle_parking.csv").exists()
 
-    with open('static/vehicle_parking.csv', 'a', newline='') as csv_file:
+    with open('static/vehicle_parking.csv', 'a', newline='', encoding='utf-8') as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=record.keys())
         if not file_exists:
             csv_writer.writeheader()

@@ -80,6 +80,11 @@ func main() {
 	// Consume vehicle entry events
 	go func() {
 		defer wg.Done()
+
+		_, declareErr := ch.QueueDeclare("vehicle_entry", true, false, false, false, nil)
+		if declareErr != nil {
+			log.Fatalf("Failed to declare vehicle_entry queue: %v", declareErr)
+		}
 		msgs, _ := ch.Consume("vehicle_entry", "", true, false, false, false, nil)
 
 		for msg := range msgs {
@@ -103,6 +108,11 @@ func main() {
 	// Consume vehicle exit events
 	go func() {
 		defer wg.Done()
+
+		_, declareErr := ch.QueueDeclare("vehicle_exit", true, false, false, false, nil)
+		if declareErr != nil {
+			log.Fatalf("Failed to declare vehicle_exit queue: %v", declareErr)
+		}
 
 		msgs, _ := ch.Consume("vehicle_exit", "", true, false, false, false, nil)
 

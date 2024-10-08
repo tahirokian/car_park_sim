@@ -46,6 +46,7 @@ func NewMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.HistogramOpts{
 				Namespace: "go_backend",
 				Name:      "event_processing_delay_hist",
+				Buckets:   prometheus.DefBuckets,
 				Help:      "Event processing delay histogram for go backend service.",
 			},
 			[]string{"event_type"},

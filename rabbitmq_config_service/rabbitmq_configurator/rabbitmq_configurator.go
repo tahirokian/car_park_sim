@@ -74,8 +74,7 @@ func main() {
 		conn, err = amqp.Dial(getRabbitmqUrl())
 
 		if err != nil {
-			log.Println("Failed to connect to RabbitMQ, retrying in 5 seconds...")
-			time.Sleep(5 * time.Second)
+			time.Sleep(1 * time.Second)
 			continue
 		}
 
@@ -85,9 +84,9 @@ func main() {
 
 	defer conn.Close()
 
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("Failed to open a channel: %v", err)
+	ch, chErr := conn.Channel()
+	if chErr != nil {
+		log.Fatalf("Failed to open a channel: %v", chErr)
 	}
 	defer ch.Close()
 

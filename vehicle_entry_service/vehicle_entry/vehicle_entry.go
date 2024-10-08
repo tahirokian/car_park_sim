@@ -149,6 +149,11 @@ func main() {
 	m := NewMetrics(reg)
 	go setupPromethusEndpoint(reg)
 
+	_, declareErr := ch.QueueDeclare("vehicle_entry", true, false, false, false, nil)
+	if declareErr != nil {
+		log.Fatalf("Failed to declare vehicle_entry queue: %v", declareErr)
+	}
+
 	setupDuration := time.Since(startTime)
 	m.startupDelay.Set(setupDuration.Seconds())
 	log.Println("Vehicle entry service setup took: ", setupDuration)

@@ -1,4 +1,4 @@
-FROM golang:1.23.1-alpine
+FROM golang:1.23.2-alpine
 
 # Set working directory
 RUN mkdir /go_backend
