@@ -1,11 +1,33 @@
-THIS_FILE := $(lastword $(MAKEFILE_LIST))
-
-.PHONY: help build build-and-deploy deploy up start down stop restart logs ps top login-redis login-prometheus login-web-backend login-rabbitmq login-queue-configurator login-vehicle-entry login-vehicle-exit login-go-backend login-grafana
+.PHONY: help build build-and-deploy deploy up start down stop restart logs ps top login-redis
+.PHONY: login-prometheus login-web-backend login-rabbitmq login-queue-configurator
+.PHONY: login-vehicle-entry login-vehicle-exit login-go-backend login-grafana
 
 help:	## Show this help message
-	@echo "Make sure you can run docker command without sudo"
 	@echo ""
-	@echo "Usage: make {build|build-and-deploy|deploy|up|start|stop|down|restart|logs|ps|top|login-redis|login-rabbitmq|login-web-backend|login-queue-configurator|login-vehicle-entry|login-vehicle-exit|login-go-backend|login-prometheus|login-grafana}"
+	@echo "** Make sure you can run docker command without sudo **"
+	@echo ""
+	@echo "Usage: make option"
+	@echo "Options:"
+	@echo "	build                      Build services"
+	@echo "	build-and-deploy           Build services and start containers"
+	@echo "	deploy                     Create and start containers in detached mode"
+	@echo "	down                       Stop and remove containers, networks"
+	@echo "	login-go-backend           Login to go backend container"
+	@echo "	login-grafana              Login to grafana container"
+	@echo "	login-prometheus           Login to prometheus container"
+	@echo "	login-queue-configurator   Login to queue configurator container"
+	@echo "	login-rabbitmq             Login to rabbitmq container"
+	@echo "	login-redis                Login to rabbitmq container"
+	@echo "	login-vehicle-entry        Login to vehicle entry container"
+	@echo "	login-vehicle-exit         Login to vehicle exit container"
+	@echo "	login-web-backend          Login to web backend container"
+	@echo "	logs                       View output from containers (last 200 log lines)"
+	@echo "	ps                         List containers"
+	@echo "	restart                    Stop and star the services"
+	@echo "	start                      Starts existing containers for services"
+	@echo "	stop                       Stops running containers without removing them"
+	@echo "	top                        Display the running processes"
+	@echo "	up                         Create and start containers"
 
 build:
 	docker-compose -f docker-compose.yml build
