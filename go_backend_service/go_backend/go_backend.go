@@ -36,16 +36,11 @@ func main() {
 	var err error
 	var rdb *redis.Client
 
-	for {
-		conn, err = amqp.Dial(getRabbitmqUrl())
-		if err != nil {
-			log.Println("Failed to connect to RabbitMQ, retrying in 5 seconds...")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		log.Println("Connected to RabbitMQ successfully!")
-		break
+	conn, err = amqp.Dial(getRabbitmqUrl())
+	if err != nil {
+		log.Fatalf("Failed to open rabbitmq connection: %v", err)
 	}
+	log.Println("Connected to RabbitMQ successfully!")
 
 	defer conn.Close()
 
@@ -81,11 +76,10 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		_, declareErr := ch.QueueDeclare("vehicle_entry", true, false, false, false, nil)
-		if declareErr != nil {
-			log.Fatalf("Failed to declare vehicle_entry queue: %v", declareErr)
+		msgs, consumeErr := ch.Consume("vehicle_entry", "", true, false, false, false, nil)
+		if consumeErr != nil {
+			log.Fatalf("Failed to consume enter event: %v\n", consumeErr)
 		}
-		msgs, _ := ch.Consume("vehicle_entry", "", true, false, false, false, nil)
 
 		for msg := range msgs {
 			entryEventStart := time.Now()
@@ -109,12 +103,10 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		_, declareErr := ch.QueueDeclare("vehicle_exit", true, false, false, false, nil)
-		if declareErr != nil {
-			log.Fatalf("Failed to declare vehicle_exit queue: %v", declareErr)
+		msgs, consumeErr := ch.Consume("vehicle_exit", "", true, false, false, false, nil)
+		if consumeErr != nil {
+			log.Fatalf("Failed to consume exit event: %v\n", consumeErr)
 		}
-
-		msgs, _ := ch.Consume("vehicle_exit", "", true, false, false, false, nil)
 
 		for msg := range msgs {
 			exitEventStart := time.Now()

@@ -91,18 +91,14 @@ func processEnrtyEvents(ch *amqp.Channel, ctx context.Context, m *metrics) {
 			EntryDateTime: time.Now().UTC().Format(time.RFC3339),
 		}
 
-		for {
-			err := publishEntryEvent(ch, ctx, entryEvent)
+		err := publishEntryEvent(ch, ctx, entryEvent)
 
-			if err != nil {
-				log.Println("Failed to publish enter event, retrying in 5 seconds...")
-				time.Sleep(5 * time.Second)
-				continue
-			}
-
-			log.Printf("Published entry event: %+v\n", entryEvent)
-			break
+		if err != nil {
+			log.Fatalf("Failed to publish enter event: %v\n", err)
 		}
+
+		log.Printf("Published entry event: %+v\n", entryEvent)
+
 		eventProcessingDurationSec := time.Since(eventProcessingStart).Seconds()
 		log.Printf("Entry event processing took: %v\n", eventProcessingDurationSec)
 
@@ -120,23 +116,18 @@ func main() {
 	var conn *amqp.Connection
 	var err error
 
-	for {
-		conn, err = amqp.Dial(getRabbitmqUrl())
-		if err != nil {
-			log.Println("Failed to connect to RabbitMQ, retrying in 5 seconds...")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		log.Println("Connected to RabbitMQ successfully!")
-		break
+	conn, err = amqp.Dial(getRabbitmqUrl())
+	if err != nil {
+		log.Fatalf("Failed to open rabbitmq connection: %v", err)
 	}
+	log.Println("Connected to RabbitMQ successfully!")
 
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 
 	if err != nil {
-		log.Fatalf("Failed to open a channel: %v", err)
+		log.Fatalf("Failed to open rabbitmq channel: %v", err)
 	}
 
 	defer ch.Close()
@@ -148,11 +139,6 @@ func main() {
 	reg.MustRegister(collectors.NewGoCollector())
 	m := NewMetrics(reg)
 	go setupPromethusEndpoint(reg)
-
-	_, declareErr := ch.QueueDeclare("vehicle_entry", true, false, false, false, nil)
-	if declareErr != nil {
-		log.Fatalf("Failed to declare vehicle_entry queue: %v", declareErr)
-	}
 
 	setupDuration := time.Since(startTime)
 	m.startupDelay.Set(setupDuration.Seconds())

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -18,7 +17,7 @@ func publishEntryEvent(ch *amqp.Channel, ctx context.Context, event VehicleEntry
 	body, err := json.Marshal(event)
 
 	if err != nil {
-		log.Fatalf("Failed to jsonify the event: %v", err)
+		return err
 	}
 
 	err = ch.PublishWithContext(

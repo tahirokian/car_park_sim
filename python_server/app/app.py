@@ -18,12 +18,14 @@ _HTTP_REQUEST_COUNT = Counter(namespace='web_backend', name='http_requests_count
 _HTTP_REQUEST_TIME = Gauge(namespace='web_backend', name='http_request_duration_seconds',
                            documentation='Time spent processing http request', 
                            labelnames=['method'])
+_SERVER_STARTUP_TIME = Gauge(namespace='web_backend', name='startup_duration_seconds',
+                             documentation='Time to setup python web server')
 
 
-@app.route("/", methods=['GET'])
+@app.route('/', methods=['GET'])
 def index():
     start_time = time.time()
-    rendered = render_template('default.html') if not Path("static/vehicle_parking.csv").exists() \
+    rendered = render_template('default.html') if not Path('static/vehicle_parking.csv').exists() \
         else render_template('index.html')
     _HTTP_REQUEST_COUNT.labels(method='GET').inc()
     _HTTP_REQUEST_TIME.labels(method='GET').set(time.time() - start_time)
@@ -34,7 +36,7 @@ def index():
 def upload_to_file():
     start_time = time.time()
     record = json.loads(request.data)
-    file_exists = Path("static/vehicle_parking.csv").exists()
+    file_exists = Path('static/vehicle_parking.csv').exists()
 
     with open('static/vehicle_parking.csv', 'a', newline='', encoding='utf-8') as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=record.keys())
@@ -44,16 +46,21 @@ def upload_to_file():
 
     _HTTP_REQUEST_COUNT.labels(method='POST').inc()
     _HTTP_REQUEST_TIME.labels(method='POST').set(time.time() - start_time)
-    return jsonify({"status": "success"})
+    return jsonify({'status': 'success'}), 200
 
 
-if __name__ == "__main__":
-    web_addr = os.getenv("WEBBACKEND_ADDR", default = "web_backend")
-    web_port = os.getenv("WEBBACKEND_PORT", default = 40000)
-    metrics_port = os.getenv("WEBBACKEND_METRICS_PORT", default = 40100)
+if __name__ == '__main__':
+    start_time = time.time()
+    web_addr = os.getenv('WEBBACKEND_ADDR', default = 'web_backend')
+    web_port = os.getenv('WEBBACKEND_PORT', default = 40000)
+    metrics_port = os.getenv('WEBBACKEND_METRICS_PORT', default = 40100)
 
     start_http_server(port=int(metrics_port))
-    print(f"Python web server metrics available at http://{web_addr}:{metrics_port}/metrics")
+    print(f'Python web server metrics available at http://{web_addr}:{metrics_port}/metrics')
 
-    print(f"Python web server is available at http://{web_addr}:{web_port}")
-    app.run(host="0.0.0.0", port=int(web_port))
+    print(f'Python web server is available at http://{web_addr}:{web_port}')
+    setup_duration = time.time() - start_time
+    _SERVER_STARTUP_TIME.set(setup_duration)
+    print(f'Web server startup took {setup_duration} seconds')
+
+    app.run(host='0.0.0.0', port=int(web_port))

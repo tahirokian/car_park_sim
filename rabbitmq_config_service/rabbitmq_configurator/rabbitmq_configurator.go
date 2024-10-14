@@ -70,17 +70,12 @@ func main() {
 	var conn *amqp.Connection
 	var err error
 
-	for {
-		conn, err = amqp.Dial(getRabbitmqUrl())
-
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		log.Println("Connected to RabbitMQ successfully!")
-		break
+	conn, err = amqp.Dial(getRabbitmqUrl())
+	if err != nil {
+		log.Fatalf("Failed to open rabbitmq connection: %v", err)
 	}
+
+	log.Println("Connected to RabbitMQ successfully!")
 
 	defer conn.Close()
 

@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 6,
   "links": [],
   "panels": [
     {
@@ -50,6 +50,9 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -89,7 +92,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 1,
+      "id": 2,
       "options": {
         "legend": {
           "calcs": [],
@@ -149,6 +152,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -172,7 +176,7 @@
         "x": 12,
         "y": 0
       },
-      "id": 2,
+      "id": 3,
       "options": {
         "legend": {
           "calcs": [],
@@ -218,16 +222,13 @@
             "mode": "thresholds"
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -240,7 +241,7 @@
         "x": 0,
         "y": 8
       },
-      "id": 3,
+      "id": 4,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -312,7 +313,7 @@
         "x": 12,
         "y": 8
       },
-      "id": 4,
+      "id": 5,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -407,8 +408,7 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "s"
+          }
         },
         "overrides": []
       },
@@ -478,6 +478,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -501,9 +502,8 @@
         "x": 12,
         "y": 16
       },
-      "id": 5,
+      "id": 7,
       "options": {
-        "bucketCount": 30,
         "legend": {
           "calcs": [],
           "displayMode": "list",
@@ -515,7 +515,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.2.1",
       "targets": [
         {
           "datasource": {
@@ -536,6 +535,77 @@
       ],
       "title": "Web Backend HTTP GET Request Processing Delay (Histogram)",
       "type": "histogram"
+    },
+    {
+      "datasource": {
+        "default": true,
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 15,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 1,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "11.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "web_backend_startup_duration_seconds",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Web Backend Startup Delay",
+      "type": "gauge"
     }
   ],
   "refresh": "5s",
@@ -551,7 +621,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Web Backend",
-  "uid": "ee06sez1gbx1cd",
-  "version": 7,
+  "uid": "ae0vn3mpjgtfkf",
+  "version": 1,
   "weekStart": ""
 }

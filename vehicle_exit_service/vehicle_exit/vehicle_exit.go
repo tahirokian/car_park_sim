@@ -16,24 +16,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func randomVehiclePlate(rdb *redis.Client) string {
-	plates, err := rdb.SMembers(context.Background(), "entry_plates").Result()
-
-	// No vehicle has been registered.
-	if err != nil || len(plates) == 0 {
-		return ""
-	}
-
-	// 80% probability to pick from an existing plate
-	if rand.Float64() < 0.8 {
-		return plates[rand.Intn(len(plates))]
-	} else {
-		// 20% probability to generate a random, unmatched plate
-		// For the exercise, XYZ is used as prefix. This should be randomly generated.
-		return fmt.Sprintf("XYZ-%d", rand.Intn(10))
-	}
-}
-
 func getRabbitmqUrl() string {
 	rabbitmqAddress := os.Getenv("RABIITMQ_ADDR")
 	rabbitmqPort := os.Getenv("RABIITMQ_PORT")
@@ -109,24 +91,20 @@ func processExitEvents(ch *amqp.Channel, ctx context.Context, rdb *redis.Client,
 				ExitDateTime: time.Now().UTC().Format(time.RFC3339),
 			}
 
-			for {
-				err := publishExitEvent(ch, ctx, exitEvent)
+			err := publishExitEvent(ch, ctx, exitEvent)
 
-				if err != nil {
-					log.Println("Failed to publish exit event, retrying in 5 seconds...")
-					time.Sleep(5 * time.Second)
-					continue
-				}
-
-				log.Printf("Published exit event: %+v\n", exitEvent)
-				break
+			if err != nil {
+				log.Fatalf("Failed to publish exit event: %v\n", err)
 			}
-		}
-		eventProcessingDurationSec := time.Since(eventProcessingStart).Seconds()
-		log.Println("Exit event processing took: ", eventProcessingDurationSec)
 
-		m.numberOfProcessedEvents.Inc()
-		m.eventProcessingDelay.Set(float64(eventProcessingDurationSec))
+			log.Printf("Published exit event: %+v\n", exitEvent)
+
+			eventProcessingDurationSec := time.Since(eventProcessingStart).Seconds()
+			log.Println("Exit event processing took: ", eventProcessingDurationSec)
+
+			m.numberOfProcessedEvents.Inc()
+			m.eventProcessingDelay.Set(float64(eventProcessingDurationSec))
+		}
 
 		// Add a delay for next exit event
 		time.Sleep(2 * time.Second)
@@ -139,23 +117,16 @@ func main() {
 	var conn *amqp.Connection
 	var err error
 
-	for {
-		conn, err = amqp.Dial(getRabbitmqUrl())
-
-		if err != nil {
-			log.Println("Failed to connect to RabbitMQ, retrying in 5 seconds...")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		log.Println("Connected to RabbitMQ successfully!")
-		break
+	conn, err = amqp.Dial(getRabbitmqUrl())
+	if err != nil {
+		log.Fatalf("Failed to open rabbitmq connection: %v", err)
 	}
+
+	log.Println("Connected to RabbitMQ successfully!")
 
 	defer conn.Close()
 
 	ch, err := conn.Channel()
-
 	if err != nil {
 		log.Fatalf("Failed to open a channel: %v", err)
 	}
@@ -165,7 +136,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Connect to Redis to fetch entered vehicle plates
+	// Connect to Redis to fetch entered vehicle plate
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     getRedisUrl(),
 		Password: "",
@@ -176,11 +147,6 @@ func main() {
 	reg.MustRegister(collectors.NewGoCollector())
 	m := NewMetrics(reg)
 	go setupPromethusEndpoint(reg)
-
-	_, declateErr := ch.QueueDeclare("vehicle_exit", true, false, false, false, nil)
-	if declateErr != nil {
-		log.Fatalf("Failed to declare vehicle_exit queue: %v", declateErr)
-	}
 
 	setupDuration := time.Since(start)
 	m.startupDelay.Set(setupDuration.Seconds())

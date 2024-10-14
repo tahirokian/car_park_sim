@@ -11,6 +11,7 @@ services:
         container_name: "prometheus"
         volumes:
             - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+        restart: on-failure:5
         ports:
             - "9090:9090"
         networks:
@@ -23,15 +24,17 @@ services:
         volumes:
             - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
             - ./grafana/datasources/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-        ports:
-            - "3000:3000"
         environment:
             - GF_SECURITY_ADMIN_USER=admin
             - GF_SECURITY_ADMIN_PASSWORD=admin
             - PROMETHEUS_ADDR=prometheus
             - PROMETHEUS_PORT=9090
         depends_on:
-            - prometheus
+            prometheus:
+                condition: service_started
+        restart: on-failure:5
+        ports:
+            - "3000:3000"
         networks:
             - private
             - public
@@ -39,6 +42,13 @@ services:
     rabbitmq:
         image: "rabbitmq:4.0.2-management-alpine"
         container_name: "rabbitmq"
+        healthcheck:
+            test: ["CMD", "pgrep", "rabbitmq-server"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 25s
+        restart: on-failure:5
         ports:
             - "5672:5672"
             - "15672:15672"
@@ -49,6 +59,7 @@ services:
     redis:
         image: "redis"
         container_name: "redis"
+        restart: on-failure:5
         ports:
             - "6379:6379"
         networks:
@@ -62,6 +73,7 @@ services:
             - WEBBACKEND_PORT=40000
             - WEBBACKEND_ADDR=web_backend
             - WEBBACKEND_METRICS_PORT=40100
+        restart: on-failure:5
         ports:
             - "40000:40000"
         expose:
@@ -80,8 +92,16 @@ services:
             - QUEUE_CONFIG_ADDR=queue_configurator
             - QUEUE_CONFIG_PORT=40200
         depends_on:
-            - rabbitmq
-        expose:    # Only exposed to private network
+            rabbitmq:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "pgrep", "rabbitmq_configurator"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 15s
+        restart: on-failure:5
+        expose:
             - "40200:40200"
         networks:
             - private
@@ -96,9 +116,10 @@ services:
             - VEHICLE_ENTRY_ADDR=vehicle_entry
             - VEHICLE_ENTRY_PORT=41000
         depends_on:
-            - rabbitmq
-            - queue_configurator
-        expose:    # Only exposed to private network
+            queue_configurator:
+                condition: service_healthy
+        restart: on-failure:5
+        expose:
             - "41000:41000" 
         networks:
             - private
@@ -115,11 +136,12 @@ services:
             - VEHICLE_EXIT_ADDR=vehicle_exit
             - VEHICLE_EXIT_PORT=42000
         depends_on:
-            - redis
-            - rabbitmq
-            - queue_configurator
-            - vehicle_entry
-        expose:    # Only exposed to private network
+            queue_configurator:
+                condition: service_healthy
+            redis:
+                condition: service_started
+        restart: on-failure:5
+        expose:
             - "42000:42000"
         networks:
             - private
@@ -138,10 +160,13 @@ services:
             - GO_BACKEND_ADDR=go_backend
             - GO_BACKEND_PORT=43000
         depends_on:
-            - redis
-            - rabbitmq
-            - queue_configurator
-            - web_backend
+            queue_configurator:
+                condition: service_healthy
+            redis:
+                condition: service_started
+            web_backend:
+                condition: service_started
+        restart: on-failure:5
         expose:
           - "43000:43000"
         networks:
